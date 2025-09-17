@@ -1,60 +1,21 @@
 // AI Service API - Handles communication with AI backend
 import { 
+  JWTPayload, 
+  SessionCreateRequest, 
+  SessionCreateResponse,
+  ChatRequest,
+  ChatResponse,
+  Agent,
+  AgentsResponse,
+  CampaignAnalysis
+} from '../types';
+import { 
   generateJWTToken, 
-  createSessionPayload, 
-  generateUserId,
-  JWTPayload,
-  SessionCreateRequest,
-  SessionCreateResponse
+  createSessionPayload,
 } from '../utils/jwt';
 
-export interface ChatMessage {
-  id: string;
-  content: string;
-  sender: 'user' | 'ai';
-  timestamp: Date;
-}
-
-export interface ChatRequest {
-  message: string;
-  sessionId?: string;
-  userId: string;
-  agentId?: string;
-}
-
-export interface ChatResponse {
-  message: string;
-  sessionId: string;
-  suggestions?: string[];
-}
-
-export interface Agent {
-  id: string;
-  name: string;
-  description: string;
-}
-
-export interface AgentsResponse {
-  agents: Agent[];
-  total_count: number;
-}
-
-export interface CampaignAnalysis {
-  campaignId: string;
-  performance: {
-    reach: number;
-    engagement: number;
-    conversions: number;
-    ctr: number;
-    cpc: number;
-  };
-  recommendations: string[];
-  optimizations: {
-    audience: string[];
-    budget: string[];
-    creative: string[];
-  };
-}
+// Re-export Agent type for external use
+export type { Agent };
 
 class AIService {
   private baseURL: string;
@@ -65,6 +26,20 @@ class AIService {
   constructor() {
     this.baseURL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'https://aiapi.superbai.io/api/v1';
     this.apiKey = process.env.NEXT_PUBLIC_AI_API_KEY || '';
+  }
+
+  // Utility function to get JWT token for AI service authentication
+  private getAIServiceToken(userId?: string, username?: string): string {
+    const actualUserId = userId || this.currentUser?.id || '';
+    const actualUsername = username || this.currentUser?.name || '';
+    
+    const payload = createSessionPayload(
+      actualUserId,
+      actualUsername,
+      'facebook_marketing_agent'
+    );
+
+    return generateJWTToken(payload);
   }
 
   private async makeRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -92,13 +67,7 @@ class AIService {
       throw new Error('User not authenticated. Please create a session first.');
     }
 
-    // Generate JWT token for authentication
-    const payload = createSessionPayload(
-      this.currentUser.id,
-      this.currentUser.name,
-      'facebook_marketing_agent'
-    );
-    const jwtToken = generateJWTToken(payload);
+    const jwtToken = this.getAIServiceToken();
 
     const url = `${this.baseURL}${endpoint}`;
     
@@ -128,19 +97,12 @@ class AIService {
   async createSession(userId?: string, username?: string): Promise<SessionCreateResponse> {
     try {
       // Use provided user info or generate if not available
-      const actualUserId = userId || generateUserId();
-      const actualUsername = username || 'Famarex User';
+      const actualUserId = userId || '';
+      const actualUsername = username || '';
       
       this.setCurrentUser(actualUserId, actualUsername);
 
-      // Generate JWT payload using fixed values that work
-      const payload = createSessionPayload(
-        actualUserId,
-        actualUsername,
-        'facebook_marketing_agent'
-      );
-
-      const jwtToken = generateJWTToken(payload);
+      const jwtToken = this.getAIServiceToken(actualUserId, actualUsername);
 
       const requestBody: SessionCreateRequest = {
         metadata: {
@@ -217,29 +179,15 @@ class AIService {
       message: request.message,
       metadata: {}
     };
-
-    console.log('Sending chat request:', {
-      url: `${this.baseURL}/chat`,
-      body: requestBody,
-      headers: {
-        'accept': 'application/json',
-        'Authorization': `Bearer ${generateJWTToken({} as JWTPayload)}`,
-        'Content-Type': 'application/json',
-      }
-    });
-
-    const response = await fetch(`${this.baseURL}/chat`, {
+    const response = await fetch(`${this.baseURL}/chat/${this.currentSession}`, {
       method: 'POST',
       headers: {
         'accept': 'application/json',
-        'Authorization': `Bearer ${generateJWTToken({} as JWTPayload)}`,
+        'Authorization': `Bearer ${this.getAIServiceToken()}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestBody)
     });
-
-    console.log('Chat response status:', response.status);
-    console.log('Chat response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -279,12 +227,9 @@ class AIService {
       method: 'GET',
       headers: {
         'accept': 'application/json',
-        'Authorization': `Bearer ${generateJWTToken({} as JWTPayload)}`,
+        'Authorization': `Bearer ${this.getAIServiceToken()}`,
       },
     });
-
-    console.log('Chat history response status:', response.status);
-    console.log('Chat history response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -307,43 +252,7 @@ class AIService {
     return historyData;
   }
 
-  // Analyze Facebook campaign performance
-  async analyzeCampaign(campaignId: string): Promise<CampaignAnalysis> {
-    try {
-      return await this.makeAuthenticatedRequest<CampaignAnalysis>(`/campaigns/${campaignId}/analyze`, {
-        method: 'GET',
-      });
-    } catch (error) {
-      console.error('Failed to analyze campaign:', error);
-      throw error;
-    }
-  }
 
-  // Get marketing insights and recommendations
-  async getInsights(userId: string, timeframe: string = '30d'): Promise<any> {
-    try {
-      return await this.makeAuthenticatedRequest(`/insights/${userId}?timeframe=${timeframe}`, {
-        method: 'GET',
-      });
-    } catch (error) {
-      console.error('Failed to retrieve insights:', error);
-      throw error;
-    }
-  }
-
-  // Generate audience suggestions
-  async generateAudienceSuggestions(businessType: string, location: string): Promise<string[]> {
-    try {
-      const response = await this.makeAuthenticatedRequest<{ suggestions: string[] }>('/audience/suggestions', {
-        method: 'POST',
-        body: JSON.stringify({ businessType, location }),
-      });
-      return response.suggestions;
-    } catch (error) {
-      console.error('Failed to generate audience suggestions:', error);
-      throw error;
-    }
-  }
 
   // Reset session (for logout or new session)
   resetSession() {

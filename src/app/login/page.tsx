@@ -37,7 +37,7 @@ export default function LoginPage() {
   useEffect(() => {
     const token = localStorage.getItem('famarex_token');
     if (token && userService.isAuthenticated()) {
-      router.push('/chat');
+      router.push('/workspace');
     }
   }, [router]);
 
@@ -56,8 +56,8 @@ export default function LoginPage() {
       localStorage.setItem('famarex_user', JSON.stringify(response.user));
       localStorage.setItem('famarex_token', response.access_token);
       
-      // Redirect to chat
-      router.push('/chat');
+      // Redirect to workspace
+      router.push('/workspace');
     } catch (error) {
       console.error('Login error:', error);
       setError(error instanceof Error ? error.message : 'Login failed. Please try again.');

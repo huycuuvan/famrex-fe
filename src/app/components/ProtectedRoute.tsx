@@ -21,7 +21,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         const token = localStorage.getItem('famarex_token');
         
         if (!token) {
-          router.push('/login');
+          router.push('/workspace');
           return;
         }
 
@@ -29,24 +29,25 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         if (userService.isAuthenticated()) {
           // Try to get current user to validate token
           try {
-            await userService.getCurrentUser();
+          
             setIsAuthenticated(true);
           } catch (error) {
             console.error('Token validation failed:', error);
-            // Token is invalid, redirect to login
+            // Token is invalid, redirect to workspace
             localStorage.removeItem('famarex_token');
             localStorage.removeItem('famarex_user');
             localStorage.removeItem('famarex_refresh_token');
-            router.push('/login');
+            localStorage.removeItem('famarex_workspace');
+            router.push('/workspace');
             return;
           }
         } else {
-          router.push('/login');
+          router.push('/workspace');
           return;
         }
       } catch (error) {
         console.error('Auth check failed:', error);
-        router.push('/login');
+        router.push('/workspace');
       } finally {
         setIsLoading(false);
       }
@@ -94,7 +95,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!isAuthenticated) {
-    return null; // Will redirect to login
+    return null; // Will redirect to workspace
   }
 
   return <>{children}</>;

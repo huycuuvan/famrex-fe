@@ -195,69 +195,7 @@ class UserService {
     }
   }
 
-  // User management methods
-  async getCurrentUser(): Promise<User> {
-    try {
-      return await this.makeRequest<User>('/users/me');
-    } catch (error) {
-      // Return cached user data if available
-      if (typeof window !== 'undefined') {
-        const cachedUser = localStorage.getItem('famarex_user');
-        if (cachedUser) {
-          return JSON.parse(cachedUser);
-        }
-      }
-      throw error;
-    }
-  }
 
-  async updateUser(userData: Partial<User>): Promise<User> {
-    try {
-      return await this.makeRequest<User>('/users/me', {
-        method: 'PUT',
-        body: JSON.stringify(userData),
-      });
-    } catch (error) {
-      console.warn('User update failed');
-      throw error;
-    }
-  }
-
-  // Workspace management methods
-  async getWorkspaces(): Promise<Workspace[]> {
-    try {
-      return await this.makeRequest<Workspace[]>('/workspaces');
-    } catch (error) {
-      console.warn('Workspaces unavailable, using mock data');
-      return [
-        {
-          id: '1',
-          name: 'My Marketing Workspace',
-          description: 'Main workspace for Facebook marketing campaigns',
-          ownerId: '1',
-          members: [
-            {
-              userId: '1',
-              role: 'owner',
-              joinedAt: new Date(),
-              permissions: ['read', 'write', 'admin']
-            }
-          ],
-          settings: {
-            facebookPageId: 'mock_page_id',
-            timezone: 'UTC',
-            currency: 'USD',
-            notifications: {
-              email: true,
-              push: true
-            }
-          },
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      ];
-    }
-  }
 
   async createWorkspace(workspaceData: Partial<Workspace>): Promise<Workspace> {
     try {

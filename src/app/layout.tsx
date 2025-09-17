@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-  import {MuiThemeProvider} from "./components/MuiThemeProvider"
+import {MuiThemeProvider} from "./components/MuiThemeProvider"
+import 'react-resizable/css/styles.css'
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -17,7 +18,11 @@ export const metadata: Metadata = {
   description: "Revolutionize your Facebook marketing with AI-powered automation and insights",
   keywords: "AI, Facebook Marketing, Automation, Social Media, Marketing Agent",
   authors: [{ name: "Famarex Team" }],
-  viewport: "width=device-width, initial-scale=1",
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -26,9 +31,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning
       >
         <MuiThemeProvider>
           {children}

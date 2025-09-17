@@ -45,12 +45,14 @@ import {
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   Circle as CircleIcon,
-  Home as HomeIcon
+  Home as HomeIcon,
+  Campaign as CampaignIcon
 } from '@mui/icons-material';
 import { aiService, Agent } from '../lib/api/aiService';
 import { userService, User } from '../lib/api/userService';
 import AgentSelector from '../components/AgentSelector';
 import ProtectedRoute from '../components/ProtectedRoute';
+import AppLayout from '../components/AppLayout';
 
 interface Message {
   id: string;
@@ -66,8 +68,6 @@ interface ChatSession {
   timestamp: Date;
 }
 
-const DRAWER_WIDTH = 320;
-
 function ChatPageContent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -75,8 +75,6 @@ function ChatPageContent() {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [agentSelectorOpen, setAgentSelectorOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   
@@ -98,7 +96,17 @@ function ChatPageContent() {
     loadUserData();
     initializeSession();
     loadChatHistory();
+    checkWorkspaceSelection();
   }, []);
+
+  const checkWorkspaceSelection = () => {
+    const workspaceData = localStorage.getItem('famarex_workspace');
+    if (!workspaceData) {
+      // No workspace selected, redirect to workspace selection
+      router.push('/workspace');
+      return;
+    }
+  };
 
   const loadUserData = async () => {
     try {
@@ -108,12 +116,6 @@ function ChatPageContent() {
         setCurrentUser(JSON.parse(cachedUser));
       }
 
-      // Then try to get fresh user data from API
-      const user = await userService.getCurrentUser();
-      setCurrentUser(user);
-      
-      // Update localStorage with fresh data
-      localStorage.setItem('famarex_user', JSON.stringify(user));
     } catch (error) {
       console.error('Failed to load user data:', error);
       // If API fails but we have cached data, that's ok
@@ -223,17 +225,6 @@ function ChatPageContent() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await userService.logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      aiService.resetSession();
-      router.push('/');
-    }
-  };
-
   const startNewChat = async () => {
     try {
       setIsLoading(true);
@@ -264,10 +255,6 @@ function ChatPageContent() {
         timestamp: new Date()
       }
     ]);
-  };
-
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
   };
 
   // Loading Screen
@@ -309,292 +296,63 @@ function ChatPageContent() {
     );
   }
 
-  // Sidebar Content
-  const sidebarContent = (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
-      <Box sx={{ p: 3, borderBottom: 1, borderColor: 'divider' }}>
-        <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3 }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2,
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <SparklesIcon sx={{ color: 'white', fontSize: 28 }} />
-          </Box>
-          <Typography variant="h5" fontWeight="bold">
-            Famarex
-          </Typography>
-        </Stack>
-        
-        {/* User Profile */}
-        <Card elevation={0} sx={{ bgcolor: 'primary.light', color: 'primary.contrastText' }}>
-          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-            <Stack direction="row" spacing={2} alignItems="center">
-              <Avatar sx={{ bgcolor: 'primary.main', width: 48, height: 48 }}>
-                {currentUser?.picture ? (
-                  <img src={currentUser.picture} alt={currentUser.name} style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
-                ) : (
-                  <PersonIcon />
-                )}
-              </Avatar>
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="subtitle1" fontWeight="bold">
-                  {currentUser?.name || 'Loading...'}
-                </Typography>
-                <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                  {currentUser?.email || 'Loading...'}
-                </Typography>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 0.5 }}>
-                  <CircleIcon sx={{ fontSize: 8, color: 'success.main' }} />
-                  <Typography variant="caption">Online</Typography>
-                  {currentUser?.credit && (
-                    <Chip 
-                      label={`${currentUser.credit} credits`} 
-                      size="small" 
-                      sx={{ ml: 1, fontSize: '0.7rem', height: 20 }}
-                    />
-                  )}
-                </Stack>
-              </Box>
-            </Stack>
-          </CardContent>
-        </Card>
-        
-        {/* Session Info */}
-        {sessionId && (
-          <Paper elevation={0} sx={{ mt: 2, p: 1.5, bgcolor: 'grey.50' }}>
-            <Typography variant="caption" color="text.secondary">
-              Session ID:
-            </Typography>
-            <Typography variant="caption" sx={{ fontFamily: 'monospace', display: 'block' }}>
-              {sessionId.substring(0, 20)}...
-            </Typography>
-          </Paper>
-        )}
-      </Box>
-
-      {/* Agent Selector */}
-      <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-        <ListItemButton 
-          onClick={() => setAgentSelectorOpen(!agentSelectorOpen)}
-          sx={{ borderRadius: 2, mb: 1 }}
-        >
-          <ListItemText 
-            primary="AI Agent" 
-            secondary={selectedAgent?.name || 'Select Agent'}
-          />
-          {agentSelectorOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-        </ListItemButton>
-        <Collapse in={agentSelectorOpen}>
-          <Box sx={{ pl: 2 }}>
-            <AgentSelector 
-              selectedAgentId={selectedAgent?.id}
-              onAgentSelect={handleAgentSelect}
-            />
-          </Box>
-        </Collapse>
-      </Box>
-
-      {/* New Chat Button */}
-      <Box sx={{ p: 2 }}>
-        <Button
-          fullWidth
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={startNewChat}
-          disabled={isLoading}
-          sx={{ 
-            py: 1.5,
-            borderRadius: 3,
-            textTransform: 'none',
-            fontSize: '1rem'
-          }}
-        >
-          New Chat
-        </Button>
-      </Box>
-
-      {/* Chat History */}
-      <Box sx={{ flex: 1, overflow: 'auto' }}>
-        <Typography variant="subtitle2" sx={{ px: 2, py: 1, color: 'text.secondary' }}>
-          Recent Chats
-        </Typography>
-        <List sx={{ px: 1 }}>
-          {chatSessions.map((session) => (
-            <ListItem key={session.id} disablePadding>
-              <ListItemButton sx={{ borderRadius: 2, mb: 0.5 }}>
-                <ListItemIcon>
-                  <ChatIcon color="action" />
-                </ListItemIcon>
-                <ListItemText
-                  primary={
-                    <Typography variant="body2" fontWeight="medium" noWrap>
-                      {session.title}
-                    </Typography>
-                  }
-                  secondary={
-                    <Stack spacing={0.5}>
-                      <Typography variant="caption" noWrap color="text.secondary">
-                        {session.lastMessage}
-                      </Typography>
-                      <Typography variant="caption" color="text.disabled">
-                        {session.timestamp.toLocaleDateString()}
-                      </Typography>
-                    </Stack>
-                  }
-                />
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
-      </Box>
-
-      {/* Settings & Logout */}
-      <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
-        <Stack spacing={1}>
-          <Button
-            fullWidth
-            variant="text"
-            startIcon={<HomeIcon />}
-            onClick={() => router.push('/')}
-            sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
-          >
-            Back to Home
-          </Button>
-          <Button
-            fullWidth
-            variant="text"
-            startIcon={<SettingsIcon />}
-            sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
-          >
-            Settings
-          </Button>
-          <Button
-            fullWidth
-            variant="text"
-            startIcon={<LogoutIcon />}
-            onClick={handleLogout}
-            color="error"
-            sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
-          >
-            Logout
-          </Button>
-        </Stack>
-      </Box>
-    </Box>
-  );
-
   return (
-    <Box sx={{ display: 'flex', height: '100vh', bgcolor: 'background.default' }}>
-      {/* Mobile App Bar */}
-      {isMobile && (
-        <AppBar position="fixed" sx={{ zIndex: theme.zIndex.drawer + 1 }}>
-          <Toolbar>
-            <IconButton
-              color="inherit"
-              edge="start"
-              onClick={handleDrawerToggle}
-              sx={{ mr: 2 }}
-            >
-              <MenuIcon />
-            </IconButton>
-            <Typography variant="h6" noWrap component="div">
-              {selectedAgent?.name || 'Famarex AI'}
-            </Typography>
-          </Toolbar>
-        </AppBar>
-      )}
-
-      {/* Sidebar */}
-      <Box
-        component="nav"
-        sx={{ width: { md: DRAWER_WIDTH }, flexShrink: { md: 0 } }}
-      >
-        {isMobile ? (
-          <Drawer
-            variant="temporary"
-            open={mobileOpen}
-            onClose={handleDrawerToggle}
-            ModalProps={{ keepMounted: true }}
-            sx={{
-              '& .MuiDrawer-paper': { 
-                boxSizing: 'border-box', 
-                width: DRAWER_WIDTH,
-                bgcolor: 'background.paper'
-              },
+    <AppLayout 
+      title={selectedAgent?.name || 'AI Marketing Assistant'}
+      subtitle={selectedAgent?.description || 'Get personalized Facebook marketing insights'}
+      showAgentSelector={true}
+    >
+      <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        {/* Chat History Sidebar */}
+        <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+          <Button
+            fullWidth
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={startNewChat}
+            disabled={isLoading}
+            sx={{ 
+              py: 1.5,
+              borderRadius: 3,
+              textTransform: 'none',
+              fontSize: '1rem',
+              mb: 2
             }}
           >
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
-              <IconButton onClick={handleDrawerToggle}>
-                <CloseIcon />
-              </IconButton>
-            </Box>
-            {sidebarContent}
-          </Drawer>
-        ) : (
-          <Drawer
-            variant="permanent"
-            sx={{
-              '& .MuiDrawer-paper': {
-                boxSizing: 'border-box',
-                width: DRAWER_WIDTH,
-                bgcolor: 'background.paper',
-                borderRight: 1,
-                borderColor: 'divider'
-              },
-            }}
-            open
-          >
-            {sidebarContent}
-          </Drawer>
-        )}
-      </Box>
-
-      {/* Main Chat Area */}
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
-          mt: { xs: 8, md: 0 }
-        }}
-      >
-        {/* Chat Header */}
-        <Paper 
-          elevation={0} 
-          sx={{ 
-            p: 3, 
-            borderBottom: 1, 
-            borderColor: 'divider',
-            bgcolor: 'background.paper'
-          }}
-        >
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Box>
-              <Typography variant="h5" fontWeight="bold">
-                {selectedAgent?.name || 'AI Marketing Assistant'}
+            New Chat
+          </Button>
+          
+          {chatSessions.length > 0 && (
+            <>
+              <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
+                Recent Chats
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {selectedAgent?.description || 'Get personalized Facebook marketing insights'}
-              </Typography>
-            </Box>
-            <Chip
-              icon={<CircleIcon sx={{ fontSize: 12, color: 'success.main' }} />}
-              label="AI Online"
-              variant="outlined"
-              size="small"
-            />
-          </Stack>
-        </Paper>
+              <List sx={{ maxHeight: 200, overflow: 'auto' }}>
+                {chatSessions.slice(0, 5).map((session) => (
+                  <ListItem key={session.id} disablePadding>
+                    <ListItemButton sx={{ borderRadius: 2, mb: 0.5 }}>
+                      <ListItemIcon>
+                        <ChatIcon color="action" />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={
+                          <Typography variant="body2" fontWeight="medium" noWrap>
+                            {session.title}
+                          </Typography>
+                        }
+                        secondary={
+                          <Typography variant="caption" color="text.disabled">
+                            {session.timestamp.toLocaleDateString()}
+                          </Typography>
+                        }
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </List>
+            </>
+          )}
+        </Box>
 
         {/* Messages Area */}
         <Box 
@@ -812,7 +570,7 @@ function ChatPageContent() {
           <AddIcon />
         </Fab>
       )}
-    </Box>
+    </AppLayout>
   );
 }
 
