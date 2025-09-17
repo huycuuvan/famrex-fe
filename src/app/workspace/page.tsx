@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Box, CircularProgress, Alert } from '@mui/material';
-import { Workspace } from '@/app/lib/types';
+import { Workspace } from '@/libs/types';
 
 // Dynamic imports to prevent hydration issues
-const WorkspaceDashboard = dynamic(() => import('../components/workspace/WorkspaceDashboard'), {
+const WorkspaceDashboard = dynamic(() => import('../../components/workspace/dashboard/WorkspaceDashboard'), {
   ssr: false,
   loading: () => (
     <Box 
@@ -23,18 +23,13 @@ const WorkspaceDashboard = dynamic(() => import('../components/workspace/Workspa
   )
 });
 
-const WorkspaceModal = dynamic(() => import('../components/workspace/WorkspaceModal'), {
-  ssr: false
-});
-
-const LoginModal = dynamic(() => import('../components/login/LoginModal'), {
+const WorkspaceModal = dynamic(() => import('../../components/workspace/WorkspaceModal'), {
   ssr: false
 });
 
 export default function WorkspacePage() {
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
-  const [showLoginModal, setShowLoginModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
@@ -60,8 +55,7 @@ export default function WorkspacePage() {
       const user = typeof window !== 'undefined' ? localStorage.getItem('famarex_user') : null;
 
       if (!token || !user) {
-        setShowLoginModal(true);
-        setIsLoading(false);
+        router.push('/login');
         return;
       }
 
@@ -76,15 +70,10 @@ export default function WorkspacePage() {
     } catch (error) {
       console.error('Error checking auth/workspace:', error);
       setError('Failed to load workspace data');
-      setShowLoginModal(true);
+      router.push('/login');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleLoginSuccess = (workspace: Workspace) => {
-    setCurrentWorkspace(workspace);
-    setShowLoginModal(false);
   };
 
   const handleWorkspaceSelected = (workspace: Workspace) => {
@@ -151,15 +140,6 @@ export default function WorkspacePage() {
           workspace={currentWorkspace}
           onWorkspaceChange={handleWorkspaceChange}
           onStartChat={handleStartChat}
-        />
-      )}
-
-      {/* Login Modal */}
-      {mounted && (
-        <LoginModal
-          isOpen={showLoginModal}
-          onClose={() => setShowLoginModal(false)}
-          onLoginSuccess={handleLoginSuccess}
         />
       )}
 

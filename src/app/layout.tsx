@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import {MuiThemeProvider} from "./components/MuiThemeProvider"
+import {MuiThemeProvider} from "../components/providers/MuiThemeProvider"
+import { AppProvider } from '@/contexts/AppContext';
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -35,9 +36,11 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        <MuiThemeProvider>
-          {children}
-        </MuiThemeProvider>
+        <AppProvider>
+          <MuiThemeProvider>
+            {children}
+          </MuiThemeProvider>
+        </AppProvider>
       </body>
     </html>
   );
