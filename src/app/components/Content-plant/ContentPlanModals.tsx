@@ -16,14 +16,15 @@ import {
   Typography,
   Chip,
   Box,
-  Alert
+  Alert,
+  SelectChangeEvent
 } from '@mui/material';
-import { ContentPlanItem } from '../../lib/types';
+import { ContentPlanItem, CreateContentPlanItemRequest } from '../../lib/types';
 
 interface AddContentModalProps {
   open: boolean;
   onClose: () => void;
-  onAdd: (item: Partial<ContentPlanItem>) => void;
+  onAdd: (item: CreateContentPlanItemRequest) => void;
 }
 
 interface ShareModalProps {
@@ -33,19 +34,19 @@ interface ShareModalProps {
 }
 
 export function AddContentModal({ open, onClose, onAdd }: AddContentModalProps) {
-  const [formData, setFormData] = useState<Partial<ContentPlanItem>>({
+  const [formData, setFormData] = useState<CreateContentPlanItemRequest>({
     task_date: new Date().toISOString().split('T')[0],
-    channel_type: '',
+    channel_type: 'social_media',
     channel_id: '',
     status: 'draft',
-    publish_date: '',
-    description: '',
-    content: '',
-    producer: '',
-    target_source: '',
+    publish_time: '',
+    title: '',
+    descript_content: '',
+    product: '',
+    target_customer: '',
     goals: '',
     media_url: '',
-    article_url: ''
+    article_route: ''
   });
 
   const handleSubmit = () => {
@@ -54,22 +55,26 @@ export function AddContentModal({ open, onClose, onAdd }: AddContentModalProps) 
     // Reset form
     setFormData({
       task_date: new Date().toISOString().split('T')[0],
-      channel_type: '',
+      channel_type: 'social_media',
       channel_id: '',
       status: 'draft',
-      publish_date: '',
-      description: '',
-      content: '',
-      producer: '',
-      target_source: '',
+      publish_time: '',
+      title: '',
+      descript_content: '',
+      product: '',
+      target_customer: '',
       goals: '',
       media_url: '',
-      article_url: ''
+      article_route: ''
     });
   };
 
-  const handleChange = (field: keyof ContentPlanItem, value: any) => {
+  const handleChange = (field: keyof CreateContentPlanItemRequest, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSelectChange = (field: keyof CreateContentPlanItemRequest) => (event: SelectChangeEvent<string>) => {
+    handleChange(field, event.target.value);
   };
 
   return (
@@ -81,16 +86,16 @@ export function AddContentModal({ open, onClose, onAdd }: AddContentModalProps) 
             <TextField
               label="Ngày Task"
               type="date"
-              value={formData.task_date || ''}
+              value={formData.task_date}
               onChange={(e) => handleChange('task_date', e.target.value)}
               InputLabelProps={{ shrink: true }}
               fullWidth
             />
             <TextField
               label="Ngày Đăng"
-              type="date"
-              value={formData.publish_date || ''}
-              onChange={(e) => handleChange('publish_date', e.target.value)}
+              type="datetime-local"
+              value={formData.publish_time}
+              onChange={(e) => handleChange('publish_time', e.target.value)}
               InputLabelProps={{ shrink: true }}
               fullWidth
             />
@@ -100,20 +105,23 @@ export function AddContentModal({ open, onClose, onAdd }: AddContentModalProps) 
             <FormControl fullWidth>
               <InputLabel>Loại Kênh</InputLabel>
               <Select
-                value={formData.channel_type || ''}
-                onChange={(e) => handleChange('channel_type', e.target.value)}
+                value={formData.channel_type}
+                onChange={handleSelectChange('channel_type')}
                 label="Loại Kênh"
               >
-                <MenuItem value="facebook">Facebook</MenuItem>
-                <MenuItem value="instagram">Instagram</MenuItem>
-                <MenuItem value="tiktok">TikTok</MenuItem>
-                <MenuItem value="youtube">YouTube</MenuItem>
+                <MenuItem value="social_media">Social Media</MenuItem>
+                <MenuItem value="blog">Blog</MenuItem>
+                <MenuItem value="email">Email</MenuItem>
+                <MenuItem value="video">Video</MenuItem>
                 <MenuItem value="website">Website</MenuItem>
+                <MenuItem value="newsletter">Newsletter</MenuItem>
+                <MenuItem value="podcast">Podcast</MenuItem>
+                <MenuItem value="webinar">Webinar</MenuItem>
               </Select>
             </FormControl>
             <TextField
               label="ID Kênh"
-              value={formData.channel_id || ''}
+              value={formData.channel_id}
               onChange={(e) => handleChange('channel_id', e.target.value)}
               fullWidth
             />
@@ -122,57 +130,61 @@ export function AddContentModal({ open, onClose, onAdd }: AddContentModalProps) 
           <FormControl fullWidth>
             <InputLabel>Trạng Thái</InputLabel>
             <Select
-              value={formData.status || 'draft'}
-              onChange={(e) => handleChange('status', e.target.value)}
+              value={formData.status}
+              onChange={handleSelectChange('status')}
               label="Trạng Thái"
             >
               <MenuItem value="draft">Draft</MenuItem>
               <MenuItem value="scheduled">Scheduled</MenuItem>
               <MenuItem value="published">Published</MenuItem>
+              <MenuItem value="cancelled">Cancelled</MenuItem>
               <MenuItem value="failed">Failed</MenuItem>
             </Select>
           </FormControl>
 
           <TextField
-            label="Mô Tả"
-            value={formData.description || ''}
-            onChange={(e) => handleChange('description', e.target.value)}
-            multiline
-            rows={2}
+            label="Tiêu Đề"
+            value={formData.title}
+            onChange={(e) => handleChange('title', e.target.value)}
             fullWidth
+            required
           />
 
           <TextField
-            label="Nội Dung"
-            value={formData.content || ''}
-            onChange={(e) => handleChange('content', e.target.value)}
+            label="Mô Tả Nội Dung"
+            value={formData.descript_content}
+            onChange={(e) => handleChange('descript_content', e.target.value)}
             multiline
             rows={4}
             fullWidth
+            required
           />
 
           <Stack direction="row" spacing={2}>
             <TextField
-              label="Người Tạo"
-              value={formData.producer || ''}
-              onChange={(e) => handleChange('producer', e.target.value)}
+              label="Sản Phẩm"
+              value={formData.product}
+              onChange={(e) => handleChange('product', e.target.value)}
               fullWidth
+              required
             />
             <TextField
-              label="Nguồn Target"
-              value={formData.target_source || ''}
-              onChange={(e) => handleChange('target_source', e.target.value)}
+              label="Khách Hàng Mục Tiêu"
+              value={formData.target_customer}
+              onChange={(e) => handleChange('target_customer', e.target.value)}
               fullWidth
+              required
             />
           </Stack>
 
           <TextField
             label="Mục Tiêu"
-            value={formData.goals || ''}
+            value={formData.goals}
             onChange={(e) => handleChange('goals', e.target.value)}
             multiline
             rows={2}
             fullWidth
+            required
           />
 
           <Stack direction="row" spacing={2}>
@@ -183,9 +195,9 @@ export function AddContentModal({ open, onClose, onAdd }: AddContentModalProps) 
               fullWidth
             />
             <TextField
-              label="Article URL"
-              value={formData.article_url || ''}
-              onChange={(e) => handleChange('article_url', e.target.value)}
+              label="Article Route"
+              value={formData.article_route || ''}
+              onChange={(e) => handleChange('article_route', e.target.value)}
               fullWidth
             />
           </Stack>
@@ -193,7 +205,11 @@ export function AddContentModal({ open, onClose, onAdd }: AddContentModalProps) 
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Hủy</Button>
-        <Button onClick={handleSubmit} variant="contained">
+        <Button 
+          onClick={handleSubmit} 
+          variant="contained"
+          disabled={!formData.title || !formData.descript_content || !formData.product || !formData.target_customer || !formData.goals}
+        >
           Thêm
         </Button>
       </DialogActions>
@@ -203,7 +219,7 @@ export function AddContentModal({ open, onClose, onAdd }: AddContentModalProps) 
 
 export function ShareModal({ open, onClose, onShare }: ShareModalProps) {
   const [email, setEmail] = useState('');
-  const [permission, setPermission] = useState('view');
+  const [permission, setPermission] = useState<'view' | 'edit' | 'admin'>('view');
   const [message, setMessage] = useState('');
 
   const handleSubmit = () => {
@@ -215,6 +231,10 @@ export function ShareModal({ open, onClose, onShare }: ShareModalProps) {
       setPermission('view');
       setMessage('');
     }
+  };
+
+  const handlePermissionChange = (event: SelectChangeEvent<string>) => {
+    setPermission(event.target.value as 'view' | 'edit' | 'admin');
   };
 
   return (
@@ -240,7 +260,7 @@ export function ShareModal({ open, onClose, onShare }: ShareModalProps) {
             <InputLabel>Quyền Truy Cập</InputLabel>
             <Select
               value={permission}
-              onChange={(e) => setPermission(e.target.value)}
+              onChange={handlePermissionChange}
               label="Quyền Truy Cập"
             >
               <MenuItem value="view">
