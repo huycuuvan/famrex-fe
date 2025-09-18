@@ -27,7 +27,7 @@ export function useChat() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const router = useRouter();
-
+  const didInitialize = useRef(false);
   const initialize = useCallback(async () => {
     setIsInitializing(true);
     try {
@@ -73,46 +73,70 @@ export function useChat() {
   }, [router]);
 
   useEffect(() => {
+    if (didInitialize.current) {
+      return;
+    }
+    didInitialize.current = true;
+    
+    // Chạy logic khởi tạo
     initialize();
   }, [initialize]);
   
   const sendMessage = async (messageContent: string) => {
     if (!messageContent.trim() || isLoading) return;
 
+    // --- PHẦN BỊ THIẾU ĐÃ ĐƯỢC THÊM LẠI Ở ĐÂY ---
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: `user_${Date.now()}`,
       content: messageContent,
       sender: 'user',
       timestamp: new Date()
     };
-    setMessages(prev => [...prev, userMessage]);
+    
+    const placeholderAiMessage: Message = {
+      id: `ai_${Date.now()}`,
+      content: '', // Nội dung rỗng để chuẩn bị cho streaming
+      sender: 'ai',
+      timestamp: new Date()
+    };
+
+    // Cập nhật state với cả tin nhắn của user và tin nhắn tạm thời của AI
+    setMessages(prev => [...prev, userMessage, placeholderAiMessage]);
+    // ---------------------------------------------
+    
     setIsLoading(true);
 
-    try {
-      const response = await aiService.sendMessage({
-        message: messageContent,
-        userId: currentUser!.id, // currentUser chắc chắn có ở bước này
-      });
-      
-      const aiMessage: Message = {
-        id: `ai_${Date.now()}`,
-        content: response.chatMessage, 
-        sender: 'ai',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, aiMessage]);
-    } catch (error) {
-      console.error('Failed to send message:', error);
-      const errorMessage: Message = {
-        id: `err_${Date.now()}`,
-        content: 'Rất tiếc, đã có lỗi xảy ra. Vui lòng thử lại.',
-        sender: 'ai',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
+    const handleNewChunk = (textChunk: string) => {
+      setMessages(prev => 
+          prev.map(msg => 
+              msg.id === placeholderAiMessage.id 
+                  ? { ...msg, content: msg.content + textChunk } 
+                  : msg
+          )
+      );
+  };
+
+  const handleStreamEnd = () => {
       setIsLoading(false);
-    }
+  };
+
+  const handleStreamError = (error: Error) => {
+    setMessages(prev => 
+        prev.map(msg => 
+            msg.id === placeholderAiMessage.id 
+                ? { ...msg, content: 'Đã có lỗi xảy ra...' } 
+                : msg
+        )
+    );
+    setIsLoading(false);
+};
+
+    await aiService.sendMessage(
+        { message: messageContent, userId: currentUser!.id },
+        handleNewChunk,
+        handleStreamEnd,
+        handleStreamError
+    );
   };
   
   const startNewChat = () => {

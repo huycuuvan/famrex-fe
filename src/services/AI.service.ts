@@ -16,13 +16,13 @@ import {
   UserInfo
 } from '../libs/utils/aiUtils';
 import {aiApiClient } from '../libs/utils/apiClient';
-
+import { fetchEventSource } from '@microsoft/fetch-event-source';
 // Import apiClient và các type liên quan từ file đã tạo
 
 
 // Re-export Agent type để các component khác có thể sử dụng
 export type { Agent };
-
+const AI_SERVICE_BASE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'https://aiapi.superbai.io/api/v1';
 class AIService {
   private currentSession: string | null = null;
   private currentUser: UserInfo | null = null;
@@ -86,37 +86,76 @@ class AIService {
   }
 
   // Gửi tin nhắn chat đến AI
-  public async sendMessage(request: ChatRequest): Promise<ChatResponse> {
-    // Đảm bảo đã có session, nếu chưa thì tạo mới
+  public async sendMessage(
+    request: ChatRequest,
+    onChunk: (text: string) => void,
+    onClose: () => void, // Thêm callback khi stream đóng
+    onError: (error: Error) => void // Thêm callback khi có lỗi
+  ): Promise<void> {
     if (!this.currentSession) {
-      await this.createSession(request.userId, 'Famarex User');
+      onError(new Error("Session not initialized"));
+      return;
     }
 
+    const aiToken = getAIServiceToken(this.currentUser);
+    const url = `${AI_SERVICE_BASE_URL}/chat/${this.currentSession}`;
+    
     const requestBody = {
       files: [],
       images: [],
       message: request.message,
-      metadata: {}
+      metadata: {},
     };
 
-    const chatMessage  = await aiApiClient<string>(
-      `/chat/${this.currentSession}`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${getAIServiceToken(this.currentUser)}`
-        },
-        body: JSON.stringify(requestBody),
-      }
-    );
-    console.log(chatMessage);
-    return {
-      chatMessage: chatMessage || '',
-      sessionId: this.currentSession!, // Dùng '!' vì đã chắc chắn có session ở bước trên
-      suggestions: []
-    };
+    await fetchEventSource(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${aiToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+
+      // Hàm được gọi mỗi khi nhận được một sự kiện
+      onmessage(event) {
+        // Chỉ xử lý các sự kiện có tên 'message_chunk'
+        if (event.event === 'message_chunk') {
+          const chunkData = JSON.parse(event.data);
+          if (chunkData.text) {
+            onChunk(chunkData.text);
+          }
+        }
+        // Có thể xử lý sự kiện 'stream_end' ở đây nếu muốn
+        if (event.event === 'stream_end') {
+          console.log('Stream ended by server.');
+          onClose();
+        }
+      },
+
+      // Hàm được gọi khi kết nối được mở
+      async onopen(response) {
+        if (response.ok) {
+          console.log('Connection opened successfully.');
+          return; // ok
+        }
+        // Nếu có lỗi ngay khi mở kết nối (ví dụ: 404, 500)
+        throw new Error(`Failed to connect: ${response.status} ${response.statusText}`);
+      },
+
+      // Hàm được gọi khi stream đóng lại
+      onclose() {
+        console.log('Connection closed by browser or server.');
+        onClose();
+      },
+
+      // Hàm được gọi khi có lỗi
+      onerror(err) {
+        console.error('EventSource error:', err);
+        onError(err);
+        // Ném lại lỗi để dừng vòng lặp retry mặc định của thư viện
+        throw err;
+      },
+    });
   }
-
   // Lấy lịch sử chat của một agent
   public async getChatHistory(agentId: string = 'facebook_marketing_agent'): Promise<any> {
     return aiApiClient<any>(`/agents/${agentId}/sessions`, {
