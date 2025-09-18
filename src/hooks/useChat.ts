@@ -28,6 +28,8 @@ export function useChat() {
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const router = useRouter();
   const didInitialize = useRef(false);
+  const aiMessageIdRef = useRef<string | null>(null);
+
   const initialize = useCallback(async () => {
     setIsInitializing(true);
     try {
@@ -85,58 +87,66 @@ export function useChat() {
   const sendMessage = async (messageContent: string) => {
     if (!messageContent.trim() || isLoading) return;
 
-    // --- PHẦN BỊ THIẾU ĐÃ ĐƯỢC THÊM LẠI Ở ĐÂY ---
     const userMessage: Message = {
       id: `user_${Date.now()}`,
       content: messageContent,
       sender: 'user',
       timestamp: new Date()
     };
+    setMessages(prev => [...prev, userMessage]);
     
-    const placeholderAiMessage: Message = {
-      id: `ai_${Date.now()}`,
-      content: '', // Nội dung rỗng để chuẩn bị cho streaming
-      sender: 'ai',
-      timestamp: new Date()
-    };
-
-    // Cập nhật state với cả tin nhắn của user và tin nhắn tạm thời của AI
-    setMessages(prev => [...prev, userMessage, placeholderAiMessage]);
-    // ---------------------------------------------
-    
+    // 2. BẬT TRẠNG THÁI LOADING
     setIsLoading(true);
 
-    const handleNewChunk = (textChunk: string) => {
-      setMessages(prev => 
-          prev.map(msg => 
-              msg.id === placeholderAiMessage.id 
-                  ? { ...msg, content: msg.content + textChunk } 
-                  : msg
-          )
-      );
-  };
+    aiMessageIdRef.current = null;
 
-  const handleStreamEnd = () => {
-      setIsLoading(false);
-  };
+    try {
+      // Dùng ref để lưu trữ ID của tin nhắn AI sẽ được tạo
 
-  const handleStreamError = (error: Error) => {
-    setMessages(prev => 
-        prev.map(msg => 
-            msg.id === placeholderAiMessage.id 
-                ? { ...msg, content: 'Đã có lỗi xảy ra...' } 
+      const handleNewChunk = (textChunk: string) => {
+        setMessages(prevMessages => {
+          // Nếu đây là chunk đầu tiên, TẠO MỚI tin nhắn AI
+          if (aiMessageIdRef.current === null) {
+            aiMessageIdRef.current = `ai_${Date.now()}`;
+            const newAiMessage: Message = {
+              id: aiMessageIdRef.current,
+              content: textChunk,
+              sender: 'ai',
+              timestamp: new Date()
+            };
+            return [...prevMessages, newAiMessage];
+          } 
+          // Nếu là các chunk tiếp theo, CẬP NHẬT tin nhắn AI đã có
+          else {
+            return prevMessages.map(msg => 
+              msg.id === aiMessageIdRef.current
+                ? { ...msg, content: msg.content + textChunk }
                 : msg
-        )
-    );
-    setIsLoading(false);
-};
+            );
+          }
+        });
+      };
 
-    await aiService.sendMessage(
+      const handleStreamEnd = () => {
+        setIsLoading(false); // Tắt loading khi stream kết thúc
+      };
+
+      const handleStreamError = (error: Error) => {
+        // Có thể thêm một tin nhắn báo lỗi vào đây nếu muốn
+        setIsLoading(false);
+      };
+
+      await aiService.sendMessage(
         { message: messageContent, userId: currentUser!.id },
         handleNewChunk,
         handleStreamEnd,
         handleStreamError
-    );
+      );
+
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      setIsLoading(false); // Đảm bảo tắt loading nếu có lỗi ngay từ đầu
+    }
   };
   
   const startNewChat = () => {
