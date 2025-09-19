@@ -127,13 +127,16 @@ class AIService {
       // Hàm được gọi mỗi khi nhận được một sự kiện
       onmessage(event) {
         // Xử lý các loại sự kiện khác nhau
-        if (event.event === 'function_call') {
+        if (event.event === 'thinking') {
           try {
             const functionCallData: FunctionCall = JSON.parse(event.data);
             onFunctionCall(functionCallData);
           } catch (e) {
             console.error('Failed to parse function_call data:', event.data, e);
           }
+        } else if (event.event === 'execution_tool') {
+          // Log this event for now, as we don't display it directly
+          console.log('Tool execution response:', JSON.parse(event.data));
         } else if (event.event === 'function_response') {
           try {
             const functionResponseData: FunctionResponse = JSON.parse(event.data);

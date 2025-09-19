@@ -164,12 +164,33 @@ export function useChat() {
       // Dùng ref để lưu trữ ID của tin nhắn AI sẽ được tạo
 
       const handleFunctionCall = (functionCallData: FunctionCall) => {
-        thinkingStepsRef.current.push(functionCallData);
+        setMessages(prevMessages => {
+          // If this is the first function call, CREATE a new AI message to show the thinking display
+          if (aiMessageIdRef.current === null) {
+            aiMessageIdRef.current = `ai_${Date.now()}`;
+            const newAiMessage: Message = {
+              id: aiMessageIdRef.current,
+              content: '', // Start with empty content
+              sender: 'ai',
+              timestamp: new Date(),
+              thinkingSteps: [functionCallData], // Add the first step
+            };
+            return [...prevMessages, newAiMessage];
+          }
+          // If it's a subsequent function call, UPDATE the existing AI message
+          else {
+            return prevMessages.map(msg =>
+              msg.id === aiMessageIdRef.current
+                ? { ...msg, thinkingSteps: [...(msg.thinkingSteps || []), functionCallData] }
+                : msg
+            );
+          }
+        });
       };
 
       const handleNewChunk = (textChunk: string) => {
         setMessages(prevMessages => {
-          // Nếu đây là chunk đầu tiên, TẠO MỚI tin nhắn AI
+          // If there was no function call, we still need to create the message bubble on the first chunk.
           if (aiMessageIdRef.current === null) {
             aiMessageIdRef.current = `ai_${Date.now()}`;
             const newAiMessage: Message = {
@@ -177,12 +198,11 @@ export function useChat() {
               content: textChunk,
               sender: 'ai',
               timestamp: new Date(),
-              thinkingSteps: [...thinkingStepsRef.current], // Gán các bước suy nghĩ
+              thinkingSteps: [],
             };
-            thinkingStepsRef.current = []; // Xóa ref sau khi đã gán
             return [...prevMessages, newAiMessage];
           } 
-          // Nếu là các chunk tiếp theo, CẬP NHẬT tin nhắn AI đã có
+          // Append text to the existing AI message
           else {
             return prevMessages.map(msg => 
               msg.id === aiMessageIdRef.current
