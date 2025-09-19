@@ -14,7 +14,8 @@ import {
   AutoAwesome as SparklesIcon,
   Person as PersonIcon
 } from '@mui/icons-material';
-import { Message } from '@/hooks/useChat';
+import { Message } from '@/libs/types';
+import ThinkingDisplay from './ThinkingDisplay';
 
 interface MessageListProps {
   messages: Message[];
@@ -94,39 +95,46 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
                 </Avatar>
               )}
               
-              <Paper
-                elevation={message.sender === 'user' ? 2 : 1}
-                sx={{
-                  p: 2,
-                  maxWidth: '70%',
-                  bgcolor: message.sender === 'user' ? 'primary.main' : 'background.paper',
-                  color: message.sender === 'user' ? 'primary.contrastText' : 'text.primary',
-                  borderRadius: 3,
-                  ...(message.sender === 'user' && {
-                    borderBottomRightRadius: 8
-                  }),
-                  ...(message.sender === 'ai' && {
-                    borderBottomLeftRadius: 8
-                  })
-                }}
-              >
-                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
-                  {message.content}
-                </Typography>
-                <Typography 
-                  variant="caption" 
-                  sx={{ 
-                    display: 'block', 
-                    mt: 1,
-                    opacity: 0.7
-                  }}
-                >
-                  {message.timestamp.toLocaleTimeString([], { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
-                </Typography>
-              </Paper>
+              <Stack sx={{ width: '100%', maxWidth: '70%', alignItems: message.sender === 'user' ? 'flex-end' : 'flex-start' }}>
+                {message.sender === 'ai' && message.thinkingSteps && message.thinkingSteps.length > 0 && (
+                  <ThinkingDisplay steps={message.thinkingSteps} />
+                )}
+                
+                {message.content && (
+                  <Paper
+                    elevation={message.sender === 'user' ? 2 : 1}
+                    sx={{
+                      p: 2,
+                      bgcolor: message.sender === 'user' ? 'primary.main' : 'background.paper',
+                      color: message.sender === 'user' ? 'primary.contrastText' : 'text.primary',
+                      borderRadius: 3,
+                      ...(message.sender === 'user' && {
+                        borderBottomRightRadius: 8
+                      }),
+                      ...(message.sender === 'ai' && {
+                        borderBottomLeftRadius: 8
+                      })
+                    }}
+                  >
+                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+                      {message.content}
+                    </Typography>
+                    <Typography 
+                      variant="caption" 
+                      sx={{ 
+                        display: 'block', 
+                        mt: 1,
+                        opacity: 0.7
+                      }}
+                    >
+                      {message.timestamp.toLocaleTimeString([], { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
+                    </Typography>
+                  </Paper>
+                )}
+              </Stack>
 
               {message.sender === 'user' && (
                 <Avatar sx={{ bgcolor: 'primary.main' }}>

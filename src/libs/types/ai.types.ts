@@ -39,6 +39,32 @@ export interface AgentsResponse {
   total_count: number;
 }
 
+// Function Call Types
+export interface FunctionCall {
+  function_name: string;
+  args: Record<string, any>;
+}
+
+export interface FunctionResponse {
+  function_name: string;
+  response: {
+    status: string;
+    result?: any;
+    [key: string]: any;
+  };
+}
+
+// Stream Event Types
+export interface StreamEvent {
+  event: 'function_call' | 'function_response' | 'message_chunk' | 'stream_end';
+  data: string;
+}
+
+export interface ParsedStreamEvent {
+  event: 'function_call' | 'function_response' | 'message_chunk' | 'stream_end';
+  data: FunctionCall | FunctionResponse | string | { done: boolean; reason: string };
+}
+
 // Chat Types
 export interface Message {
   id: string;
@@ -46,6 +72,11 @@ export interface Message {
   sender: 'user' | 'ai';
   timestamp: Date;
   session_id?: string;
+  type?: 'message' | 'thought' | 'function_call' | 'function_response';
+  isStreaming?: boolean;
+  functionCall?: FunctionCall;
+  functionResponse?: FunctionResponse;
+  thinkingSteps?: FunctionCall[]; // Lưu lại các bước suy nghĩ
 }
 
 export interface ChatMessage {

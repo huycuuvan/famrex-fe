@@ -30,14 +30,14 @@ export default function Sidebar({ mobileOpen, onDrawerToggle }: SidebarProps) {
   return (
     <Box component="nav" sx={{ width: { md: DRAWER_WIDTH }, flexShrink: { md: 0 } }}>
       {/* Mobile Drawer */}
-      <Drawer variant="temporary" open={mobileOpen} onClose={onDrawerToggle} /* ... sx props ... */ >
+      <Drawer variant="temporary" open={mobileOpen} onClose={onDrawerToggle} ModalProps={{ keepMounted: true }} sx={{ display: { xs: 'block', md: 'none' }, '& .MuiDrawer-paper': { boxSizing: 'border-box', width: DRAWER_WIDTH } }} >
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
           <IconButton onClick={onDrawerToggle}><CloseIcon /></IconButton>
         </Box>
         {sidebarContent}
       </Drawer>
       {/* Desktop Drawer */}
-      <Drawer variant="permanent" open /* ... sx props ... */ >
+      <Drawer variant="permanent" open sx={{ display: { xs: 'none', md: 'block' }, '& .MuiDrawer-paper': { boxSizing: 'border-box', width: DRAWER_WIDTH, borderRight: 'none' } }} >
         {sidebarContent}
       </Drawer>
     </Box>

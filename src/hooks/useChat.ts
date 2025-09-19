@@ -4,13 +4,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { aiService, Agent } from '@/services/AI.service';
-import { User } from '@/libs/types';
+import { User, FunctionCall, FunctionResponse } from '@/libs/types';
 
 export interface Message {
   id: string;
   content: string;
   sender: 'user' | 'ai';
   timestamp: Date;
+  type?: 'message' | 'function_call';
+  functionCall?: FunctionCall;
+  thinkingSteps?: FunctionCall[]; // Thêm trường thinkingSteps
 }
 
 export interface ChatSession {
@@ -29,6 +32,7 @@ export function useChat() {
   const router = useRouter();
   const didInitialize = useRef(false);
   const aiMessageIdRef = useRef<string | null>(null);
+  const thinkingStepsRef = useRef<FunctionCall[]>([]); // Dùng ref để lưu các bước suy nghĩ
 
   const initialize = useCallback(async () => {
     setIsInitializing(true);
@@ -99,9 +103,14 @@ export function useChat() {
     setIsLoading(true);
 
     aiMessageIdRef.current = null;
+    thinkingStepsRef.current = []; // Reset các bước suy nghĩ
 
     try {
       // Dùng ref để lưu trữ ID của tin nhắn AI sẽ được tạo
+
+      const handleFunctionCall = (functionCallData: FunctionCall) => {
+        thinkingStepsRef.current.push(functionCallData);
+      };
 
       const handleNewChunk = (textChunk: string) => {
         setMessages(prevMessages => {
@@ -112,8 +121,10 @@ export function useChat() {
               id: aiMessageIdRef.current,
               content: textChunk,
               sender: 'ai',
-              timestamp: new Date()
+              timestamp: new Date(),
+              thinkingSteps: [...thinkingStepsRef.current], // Gán các bước suy nghĩ
             };
+            thinkingStepsRef.current = []; // Xóa ref sau khi đã gán
             return [...prevMessages, newAiMessage];
           } 
           // Nếu là các chunk tiếp theo, CẬP NHẬT tin nhắn AI đã có
@@ -139,6 +150,8 @@ export function useChat() {
       await aiService.sendMessage(
         { message: messageContent, userId: currentUser!.id },
         handleNewChunk,
+        handleFunctionCall,
+        () => {}, // Bỏ qua function response
         handleStreamEnd,
         handleStreamError
       );

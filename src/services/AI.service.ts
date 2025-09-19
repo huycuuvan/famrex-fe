@@ -7,7 +7,9 @@ import {
   ChatRequest,
   ChatResponse,
   Agent,
-  AgentsResponse
+  AgentsResponse,
+  FunctionCall, 
+  FunctionResponse
 } from '../libs/types';
 
 // Các hàm tiện ích để lấy token và thông tin user
@@ -89,8 +91,10 @@ class AIService {
   public async sendMessage(
     request: ChatRequest,
     onChunk: (text: string) => void,
-    onClose: () => void, // Thêm callback khi stream đóng
-    onError: (error: Error) => void // Thêm callback khi có lỗi
+    onFunctionCall: (call: FunctionCall) => void, 
+    onFunctionResponse: (response: FunctionResponse) => void, 
+    onClose: () => void, 
+    onError: (error: Error) => void 
   ): Promise<void> {
     if (!this.currentSession) {
       onError(new Error("Session not initialized"));
@@ -117,15 +121,37 @@ class AIService {
 
       // Hàm được gọi mỗi khi nhận được một sự kiện
       onmessage(event) {
-        // Chỉ xử lý các sự kiện có tên 'message_chunk'
-        if (event.event === 'message_chunk') {
-          const chunkData = JSON.parse(event.data);
-          if (chunkData.text) {
-            onChunk(chunkData.text);
+        // Xử lý các loại sự kiện khác nhau
+        if (event.event === 'function_call') {
+          try {
+            const functionCallData: FunctionCall = JSON.parse(event.data);
+            onFunctionCall(functionCallData);
+          } catch (e) {
+            console.error('Failed to parse function_call data:', event.data, e);
           }
-        }
-        // Có thể xử lý sự kiện 'stream_end' ở đây nếu muốn
-        if (event.event === 'stream_end') {
+        } else if (event.event === 'function_response') {
+          try {
+            const functionResponseData: FunctionResponse = JSON.parse(event.data);
+            onFunctionResponse(functionResponseData);
+          } catch (e) {
+            console.error('Failed to parse function_response data:', event.data, e);
+          }
+        } else if (event.event === 'message_chunk') {
+          try {
+            // 1. DÙNG JSON.parse() ĐỂ GIẢI MÃ CHUỖI TỪ SERVER
+            // Ví dụ: JSON.parse('"Chào bạn"') sẽ trả về chuỗi 'Chào bạn'
+            const decodedText = JSON.parse(event.data);
+            
+            // 2. Đảm bảo kết quả là một chuỗi rồi mới gửi đi
+            if (typeof decodedText === 'string') {
+              onChunk(decodedText);
+            }
+          } catch (e) {
+            // Nếu parse thất bại, có thể server gửi text thuần hoặc tín hiệu kết thúc
+            // Chúng ta có thể log ra để kiểm tra nhưng không làm crash app
+            console.warn("Received non-JSON data or end signal:", event.data);
+          }
+        } else if (event.event === 'stream_end') {
           console.log('Stream ended by server.');
           onClose();
         }

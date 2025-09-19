@@ -5,7 +5,7 @@ import { useState, ReactNode } from 'react';
 import { Box, Toolbar, IconButton, Typography, AppBar, useTheme } from '@mui/material';
 import { Menu as MenuIcon } from '@mui/icons-material';
 import { useAppContext } from '@/contexts/AppContext';
-import Sidebar from './sidebar/Sidebar'; // << 1. IMPORT SIDEBAR MỚI
+import Sidebar from './sidebar/Sidebar'; 
 import PageHeader from './PageHeader';
 
 interface AppLayoutProps {
@@ -14,51 +14,78 @@ interface AppLayoutProps {
   subtitle?: string;
 }
 
-const DRAWER_WIDTH = 320;
+const DRAWER_WIDTH = 280; 
 
 export default function AppLayout({ children, title, subtitle }: AppLayoutProps) {
-  // 2. State và logic được giảm thiểu tối đa
   const [mobileOpen, setMobileOpen] = useState(false);
   const { isSidebarHidden, toggleSidebar } = useAppContext();
   const theme = useTheme();
   
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
 
-  const currentDrawerWidth = isSidebarHidden ? 0 : DRAWER_WIDTH;
-
   return (
-    <Box sx={{ display: 'flex', height: '100vh', bgcolor: 'background.default' }}>
-      {/* Mobile Header */}
-      <AppBar position="fixed" sx={{ zIndex: theme.zIndex.drawer + 1, display: { md: 'none' } }}>
-        <Toolbar>
-          <IconButton color="inherit" edge="start" onClick={handleDrawerToggle} sx={{ mr: 2 }}>
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" noWrap>{title || 'Famarex'}</Typography>
-        </Toolbar>
-      </AppBar>
-      
-      {/* 3. SỬ DỤNG SIDEBAR COMPONENT */}
+    <Box sx={{ display: 'flex', height: '100vh', bgcolor: 'grey.100' }}>
       <Sidebar mobileOpen={mobileOpen} onDrawerToggle={handleDrawerToggle} />
+
+      {/* Backdrop mờ khi sidebar mở */}
+      {!isSidebarHidden && (
+        <Box 
+          onClick={toggleSidebar}
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            bgcolor: 'rgba(0, 0, 0, 0.1)',
+            backdropFilter: 'blur(2px)',
+            zIndex: theme.zIndex.drawer - 1, // Nằm dưới sidebar
+            display: { xs: 'none', md: 'block' }
+          }}
+        />
+      )}
+
+      {/* Nút Toggle Sidebar cho Desktop */}
+      <IconButton 
+        onClick={toggleSidebar}
+        sx={{
+          position: 'fixed',
+          top: 16,
+          left: isSidebarHidden ? 16 : DRAWER_WIDTH - 24, 
+          zIndex: theme.zIndex.drawer + 1,
+          bgcolor: 'primary.main',
+          color: 'white',
+          display: { xs: 'none', md: 'inline-flex' },
+          transition: theme.transitions.create('left', {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.enteringScreen,
+          }),
+          '&:hover': { bgcolor: 'primary.dark' }
+        }}
+      >
+        <MenuIcon />
+      </IconButton>
 
       {/* Main Content */}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          width: { md: `calc(100% - ${currentDrawerWidth}px)` },
+          width: '100%', // Luôn chiếm 100% chiều rộng
           mt: { xs: 8, md: 0 },
-          transition: theme.transitions.create('width', { /*...*/ }),
           display: 'flex',
           flexDirection: 'column'
         }}
       >
-        {/* Desktop Sidebar Toggle Button */}
-        <Box sx={{ position: 'fixed', top: 16, left: isSidebarHidden ? 16 : DRAWER_WIDTH + 16, zIndex: 1300, transition: theme.transitions.create('left', {/*...*/}) }}>
-          <IconButton onClick={toggleSidebar} sx={{ display: { xs: 'none', md: 'inline-flex' }, bgcolor: 'primary.main', color: 'white', /*...*/ }}>
-            <MenuIcon />
-          </IconButton>
-        </Box>
+        {/* Mobile Header */}
+        <AppBar position="fixed" sx={{ zIndex: theme.zIndex.drawer + 1, display: { md: 'none' } }}>
+          <Toolbar>
+            <IconButton color="inherit" edge="start" onClick={handleDrawerToggle} sx={{ mr: 2 }}>
+              <MenuIcon />
+            </IconButton>
+            <Typography variant="h6" noWrap>{title || 'Famarex'}</Typography>
+          </Toolbar>
+        </AppBar>
 
         <PageHeader title={title} subtitle={subtitle} />
         
