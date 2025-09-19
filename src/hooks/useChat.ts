@@ -43,7 +43,12 @@ export function useChat() {
       // Load history
       const historyData = await aiService.getChatHistory();
       if (historyData.sessions && Array.isArray(historyData.sessions)) {
-        setChatSessions(historyData.sessions);
+        const transformedSessions: ChatSession[] = historyData.sessions.map((session: any) => ({
+          ...session,
+          timestamp: new Date(session.create_time),
+          title: session.title || `Chat from ${new Date(session.create_time).toLocaleDateString()}`
+        }));
+        setChatSessions(transformedSessions);
       }
       
       // Welcome message
@@ -76,29 +81,57 @@ export function useChat() {
     try {
       const eventData = await aiService.getSessionEvents(sessionId);
       if (eventData && eventData.events) {
-        const loadedMessages: Message[] = eventData.events
-          .map((event: any) => {
-            try {
-              const sender: 'user' | 'ai' = event.author === 'user' ? 'user' : 'ai';
-              const contentData = JSON.parse(event.content);
-              const messageText = contentData.parts[0]?.text || '';
+        const loadedMessages: Message[] = [];
+        let pendingThinkingSteps: FunctionCall[] = [];
 
-              if (!messageText) return null;
+        // The events are in reverse chronological order, so we process them forwards.
+        for (const event of [...eventData.events].reverse()) {
+          try {
+            const sender: 'user' | 'ai' = event.author === 'user' ? 'user' : 'ai';
+            const contentData = JSON.parse(event.content);
+            const parts = contentData.parts || [];
 
-              return {
+            let messageText = '';
+            let functionCalls: FunctionCall[] = [];
+
+            for (const part of parts) {
+              if (part.text) {
+                messageText += part.text;
+              }
+              if (part.function_call) {
+                functionCalls.push(part.function_call);
+              }
+              // We don't process function_response as a separate message,
+              // as it's part of the AI's internal thought process which results in the next text message.
+            }
+
+            if (functionCalls.length > 0) {
+              // If we find function calls, store them. They will be attached to the *next* AI text message.
+              pendingThinkingSteps.push(...functionCalls);
+            }
+
+            if (messageText) {
+              const newMessage: Message = {
                 id: event.id,
                 content: messageText,
                 sender,
                 timestamp: new Date(event.timestamp),
-                type: 'event',
+                type: 'message', // Fix: Changed from 'event' to 'message'
               };
-            } catch (e) {
-              console.error('Failed to parse event content:', event.content, e);
-              return null;
+
+              // If this is an AI message and we have pending thinking steps, attach them.
+              if (sender === 'ai' && pendingThinkingSteps.length > 0) {
+                newMessage.thinkingSteps = pendingThinkingSteps;
+                pendingThinkingSteps = []; // Clear the pending steps
+              }
+              
+              loadedMessages.push(newMessage);
             }
-          })
-          .filter((msg: Message | null): msg is Message => msg !== null)
-          .reverse(); // Reverse to show in chronological order
+
+          } catch (e) {
+            console.error('Failed to parse event content:', event.content, e);
+          }
+        }
 
         setMessages(loadedMessages);
         aiService.setCurrentSession(sessionId);

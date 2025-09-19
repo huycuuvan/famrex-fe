@@ -21,7 +21,7 @@ interface ThinkingDisplayProps {
 
 export default function ThinkingDisplay({ steps }: ThinkingDisplayProps) {
   if (!steps || steps.length === 0) return null;
-
+console.log('ThinkingDisplay received steps:', steps);
   return (
     <Box sx={{ width: '100%', mb: 1 }}>
       <Accordion 
@@ -48,10 +48,10 @@ export default function ThinkingDisplay({ steps }: ThinkingDisplayProps) {
           <Stack spacing={2}>
             {steps.map((step, index) => (
               <Stack key={index} direction="row" spacing={1.5} alignItems="flex-start">
-                {getToolIcon(step.function_name)}
+                {getToolIcon(step.name || step.function_name)}
                 <Stack>
                   <Typography variant="body2">
-                    <Box component="span" fontWeight="bold">{step.function_name}</Box>
+                    <Box component="span" fontWeight="bold">{step.name || step.function_name}</Box>
                     <Box component="span" sx={{ color: 'text.secondary', ml: 0.5 }}>
                       | {step.args?.action_description}
                     </Box>

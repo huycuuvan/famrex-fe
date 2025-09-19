@@ -42,6 +42,7 @@ export interface AgentsResponse {
 // Function Call Types
 export interface FunctionCall {
   function_name: string;
+  name?: string
   args: Record<string, any>;
 }
 

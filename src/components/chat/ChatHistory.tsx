@@ -6,9 +6,10 @@ import { History as HistoryIcon } from '@mui/icons-material';
 
 // Define a type for the session object, based on what the API will return
 export interface ChatSession {
-  id: string;
-  create_time: string;
-  // Add any other relevant fields from your API response
+  id: string; // Unique identifier for the session
+  title: string; // The title of the chat, likely the first user message
+  timestamp: Date; // The creation date as a Date object
+  create_time: string; // The original timestamp string from the API
 }
 
 interface ChatHistoryProps {

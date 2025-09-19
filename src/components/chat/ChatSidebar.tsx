@@ -19,7 +19,7 @@ import {
   Add as AddIcon,
   Chat as ChatIcon
 } from '@mui/icons-material';
-import { ChatSession } from '@/hooks/useChat';
+import { ChatSession } from './ChatHistory';
 
 interface ChatSidebarProps {
   sessions: ChatSession[];

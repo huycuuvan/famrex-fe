@@ -32,7 +32,14 @@ const iconMapping: { [key: string]: JSX.Element } = {
 };
 
 export const getToolIcon = (toolName: string): JSX.Element => {
+  // DEBUG: Log the tool name to see what we're receiving from the history
+  console.log('getToolIcon received toolName:', toolName);
+
+  if (!toolName) {
+    return <GenericToolIcon sx={{ color: 'grey.600' }} />;
+  }
   const lowerToolName = toolName.toLowerCase();
+  // Revert to `includes` for more flexible matching (e.g., 'calculator_tool' includes 'calculator')
   const matchingKey = Object.keys(iconMapping).find(key => lowerToolName.includes(key));
 
   return matchingKey ? iconMapping[matchingKey] : <GenericToolIcon sx={{ color: 'grey.600' }} />;
