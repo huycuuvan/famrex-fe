@@ -13,9 +13,10 @@ import { Circle as CircleIcon } from '@mui/icons-material';
 interface PageHeaderProps {
   title?: string;
   subtitle?: string;
+  headerActions?: React.ReactNode;
 }
 
-export default function PageHeader({ title, subtitle }: PageHeaderProps) {
+export default function PageHeader({ title, subtitle, headerActions }: PageHeaderProps) {
   // Nếu không có title hoặc subtitle, không render gì cả
   if (!title && !subtitle) {
     return null;
@@ -47,12 +48,15 @@ export default function PageHeader({ title, subtitle }: PageHeaderProps) {
             </Typography>
           )}
         </Box>
-        <Chip
-          icon={<CircleIcon sx={{ fontSize: 12, color: 'success.main' }} />}
-          label="Online"
-          variant="outlined"
-          size="small"
-        />
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Chip
+            icon={<CircleIcon sx={{ fontSize: 12, color: 'success.main' }} />}
+            label="Online"
+            variant="outlined"
+            size="small"
+          />
+          {headerActions}
+        </Stack>
       </Stack>
     </Paper>
   );

@@ -66,6 +66,11 @@ class AIService {
     return this.currentSession;
   }
 
+  // Gán session hiện tại một cách thủ công (dùng cho việc load history)
+  public setCurrentSession(sessionId: string): void {
+    this.currentSession = sessionId;
+  }
+
   // Lấy tất cả các agent có sẵn
   public async getAgents(): Promise<AgentsResponse> { 
     return aiApiClient<AgentsResponse>('/agents/alls',{
@@ -184,10 +189,22 @@ class AIService {
   }
   // Lấy lịch sử chat của một agent
   public async getChatHistory(agentId: string = 'facebook_marketing_agent'): Promise<any> {
+    const aiToken = await getAIServiceToken(this.currentUser);
     return aiApiClient<any>(`/agents/${agentId}/sessions`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${getAIServiceToken(this.currentUser)}`
+        'Authorization': `Bearer ${aiToken}`
+      }
+    });
+  }
+
+  
+  public async getSessionEvents(sessionId: string): Promise<any> {
+    const aiToken = await getAIServiceToken(this.currentUser);
+    return aiApiClient<any>(`/sessions/${sessionId}/events`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${aiToken}`
       }
     });
   }

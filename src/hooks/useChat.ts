@@ -3,30 +3,16 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { aiService, Agent } from '@/services/AI.service';
-import { User, FunctionCall, FunctionResponse } from '@/libs/types';
-
-export interface Message {
-  id: string;
-  content: string;
-  sender: 'user' | 'ai';
-  timestamp: Date;
-  type?: 'message' | 'function_call';
-  functionCall?: FunctionCall;
-  thinkingSteps?: FunctionCall[]; // Thêm trường thinkingSteps
-}
-
-export interface ChatSession {
-  id: string;
-  title: string;
-  timestamp: Date;
-}
+import { aiService } from '@/services/AI.service';
+import { User, FunctionCall, Message } from '@/libs/types';
+import { ChatSession } from '@/components/chat/ChatHistory';
 
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const router = useRouter();
@@ -57,11 +43,7 @@ export function useChat() {
       // Load history
       const historyData = await aiService.getChatHistory();
       if (historyData.sessions && Array.isArray(historyData.sessions)) {
-        setChatSessions(historyData.sessions.map((s: any) => ({
-          id: s.session_id,
-          title: s.title || `Chat from ${new Date(s.created_at).toLocaleDateString()}`,
-          timestamp: new Date(s.created_at)
-        })));
+        setChatSessions(historyData.sessions);
       }
       
       // Welcome message
@@ -87,6 +69,46 @@ export function useChat() {
     // Chạy logic khởi tạo
     initialize();
   }, [initialize]);
+  
+  const loadChatSession = async (sessionId: string) => {
+    setIsHistoryLoading(true);
+    setMessages([]); // Clear previous messages
+    try {
+      const eventData = await aiService.getSessionEvents(sessionId);
+      if (eventData && eventData.events) {
+        const loadedMessages: Message[] = eventData.events
+          .map((event: any) => {
+            try {
+              const sender: 'user' | 'ai' = event.author === 'user' ? 'user' : 'ai';
+              const contentData = JSON.parse(event.content);
+              const messageText = contentData.parts[0]?.text || '';
+
+              if (!messageText) return null;
+
+              return {
+                id: event.id,
+                content: messageText,
+                sender,
+                timestamp: new Date(event.timestamp),
+                type: 'event',
+              };
+            } catch (e) {
+              console.error('Failed to parse event content:', event.content, e);
+              return null;
+            }
+          })
+          .filter((msg: Message | null): msg is Message => msg !== null)
+          .reverse(); // Reverse to show in chronological order
+
+        setMessages(loadedMessages);
+        aiService.setCurrentSession(sessionId);
+      }
+    } catch (error) {
+      console.error('Failed to load session:', error);
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  };
   
   const sendMessage = async (messageContent: string) => {
     if (!messageContent.trim() || isLoading) return;
@@ -173,9 +195,11 @@ export function useChat() {
     setInputMessage,
     isLoading,
     isInitializing,
+    isHistoryLoading,
     currentUser,
     chatSessions,
     sendMessage,
     startNewChat,
+    loadChatSession,
   };
 }

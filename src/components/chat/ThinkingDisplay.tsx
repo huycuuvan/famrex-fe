@@ -40,7 +40,7 @@ export default function ThinkingDisplay({ steps }: ThinkingDisplayProps) {
           <Stack direction="row" spacing={1} alignItems="center">
             <SparklesIcon fontSize="small" color="primary" />
             <Typography variant="body2" fontWeight="medium">
-              {steps.length > 1 ? `${steps.length} công cụ đã được sử dụng` : '1 công cụ đã được sử dụng'}
+              {steps.length > 1 ? `${steps.length} tools is calling` : '1 tool is calling'}
             </Typography>
           </Stack>
         </AccordionSummary>

@@ -16,6 +16,7 @@ import {
 } from '@mui/icons-material';
 import { Message } from '@/libs/types';
 import ThinkingDisplay from './ThinkingDisplay';
+import MessageContent from './MessageContent';
 
 interface MessageListProps {
   messages: Message[];
@@ -116,9 +117,7 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
                       })
                     }}
                   >
-                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
-                      {message.content}
-                    </Typography>
+                    <MessageContent content={message.content} />
                     <Typography 
                       variant="caption" 
                       sx={{ 

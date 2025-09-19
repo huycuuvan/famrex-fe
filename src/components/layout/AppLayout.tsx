@@ -12,11 +12,12 @@ interface AppLayoutProps {
   children: ReactNode;
   title?: string;
   subtitle?: string;
+  headerActions?: React.ReactNode;
 }
 
 const DRAWER_WIDTH = 280; 
 
-export default function AppLayout({ children, title, subtitle }: AppLayoutProps) {
+export default function AppLayout({ children, title, subtitle, headerActions }: AppLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { isSidebarHidden, toggleSidebar } = useAppContext();
   const theme = useTheme();
@@ -87,7 +88,7 @@ export default function AppLayout({ children, title, subtitle }: AppLayoutProps)
           </Toolbar>
         </AppBar>
 
-        <PageHeader title={title} subtitle={subtitle} />
+        <PageHeader title={title} subtitle={subtitle} headerActions={headerActions} />
         
         <Box sx={{ flex: 1, p: 3, overflow: 'auto' }}>
           {children}
