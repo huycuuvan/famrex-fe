@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { aiService } from '@/services/AI.service';
 import { User, FunctionCall, Message } from '@/libs/types';
 import { ChatSession } from '@/components/chat/ChatHistory';
+import { parseMessageContent } from '@/libs/utils/messageParser';
 
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -192,7 +193,7 @@ export function useChat() {
 
       const handleNewChunk = (textChunk: string) => {
         streamingContentRef.current.push(textChunk);
-        const newContent = streamingContentRef.current.join(' ');
+        const newContent = streamingContentRef.current.join(' '); // Revert back to join with space
 
         setMessages(prevMessages => {
           // If there was no function call, we still need to create the message bubble on the first chunk.
@@ -220,6 +221,22 @@ export function useChat() {
 
       const handleStreamEnd = () => {
         setIsLoading(false); // Tắt loading khi stream kết thúc
+
+        // Phân tích lại toàn bộ nội dung sau khi stream kết thúc để xử lý các định dạng đặc biệt
+        setMessages(prevMessages => {
+          const lastMessage = prevMessages[prevMessages.length - 1];
+          if (lastMessage && lastMessage.sender === 'ai' && lastMessage.id === aiMessageIdRef.current) {
+            const finalContent = streamingContentRef.current.join(' '); // Revert back to join with space
+            const parsed = parseMessageContent(finalContent);
+            
+            return prevMessages.map(msg => 
+              msg.id === aiMessageIdRef.current
+                ? { ...msg, content: finalContent, metadata: parsed.metadata } // Cập nhật lại với content và metadata đã parse
+                : msg
+            );
+          }
+          return prevMessages;
+        });
       };
 
       const handleStreamError = (error: Error) => {
