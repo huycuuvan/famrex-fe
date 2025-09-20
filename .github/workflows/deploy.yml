@@ -1,0 +1,31 @@
+# File: .github/workflows/deploy.yml
+
+name: Deploy to Production
+
+# Kích hoạt workflow mỗi khi có code được push lên nhánh `main`
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    # Sử dụng một máy ảo Ubuntu mới nhất để chạy job
+    runs-on: ubuntu-latest
+
+    steps:
+      # Bước này không cần checkout code vì tất cả hành động đều diễn ra trên server của bạn
+      - name: Deploy to Production Server
+        # Sử dụng một Action phổ biến để thực hiện SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          # Các thông tin đăng nhập được lấy từ "Secrets" của repo
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          
+          # Các lệnh sẽ được thực thi trên server của bạn
+          script: |
+            cd ~/famrex-fe
+            git pull
+            ./deploy.sh
