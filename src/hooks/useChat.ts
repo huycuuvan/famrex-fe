@@ -18,6 +18,7 @@ export function useChat() {
   const router = useRouter();
   const didInitialize = useRef(false);
   const aiMessageIdRef = useRef<string | null>(null);
+  const streamingContentRef = useRef<string[]>([]); // Ref để lưu các text chunks
   const thinkingStepsRef = useRef<FunctionCall[]>([]); // Dùng ref để lưu các bước suy nghĩ
 
   const initialize = useCallback(async () => {
@@ -158,6 +159,7 @@ export function useChat() {
     setIsLoading(true);
 
     aiMessageIdRef.current = null;
+    streamingContentRef.current = []; // Reset các chunk nội dung
     thinkingStepsRef.current = []; // Reset các bước suy nghĩ
 
     try {
@@ -189,13 +191,16 @@ export function useChat() {
       };
 
       const handleNewChunk = (textChunk: string) => {
+        streamingContentRef.current.push(textChunk);
+        const newContent = streamingContentRef.current.join(' ');
+
         setMessages(prevMessages => {
           // If there was no function call, we still need to create the message bubble on the first chunk.
           if (aiMessageIdRef.current === null) {
             aiMessageIdRef.current = `ai_${Date.now()}`;
             const newAiMessage: Message = {
               id: aiMessageIdRef.current,
-              content: textChunk,
+              content: newContent, // Sử dụng nội dung đã join
               sender: 'ai',
               timestamp: new Date(),
               thinkingSteps: [],
@@ -206,7 +211,7 @@ export function useChat() {
           else {
             return prevMessages.map(msg => 
               msg.id === aiMessageIdRef.current
-                ? { ...msg, content: msg.content + textChunk }
+                ? { ...msg, content: newContent } // Sử dụng nội dung đã join
                 : msg
             );
           }
